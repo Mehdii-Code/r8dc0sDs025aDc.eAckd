@@ -1,678 +1,73 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Strange Wood - Documentation</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+<script>
+let ws;
+let username = null;
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-            background: #101318;
-            color: #E5E7EB;
-            overflow-x: hidden;
-        }
+function connectToServer() {
+    const ip = document.getElementById("serverIP").value || "127.0.0.1";
+    const port = document.getElementById("serverPort").value || 8765;
+    ws = new WebSocket(`ws://${ip}:${port}`);
 
-        /* Header */
-        .header {
-            background: #151922;
-            padding: 15px 20px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-        }
+    ws.onopen = () => {
+        updateStatus(true);
+        closeServerModal();
+    };
 
-        .header h1 {
-            font-size: 20px;
-            color: white;
-            margin-bottom: 5px;
-        }
+    ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        displayMessage(msg);
+    };
 
-        .header p {
-            font-size: 12px;
-            color: #9CA3AF;
-        }
+    ws.onclose = () => updateStatus(false);
+    ws.onerror = () => updateStatus(false);
+}
 
-        /* Language Selector */
-        .lang-selector {
-            position: fixed;
-            top: 15px;
-            right: 15px;
-            z-index: 101;
-        }
-
-        .lang-selector select {
-            background: #1E2430;
-            color: white;
-            border: 1px solid #374151;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 14px;
-            cursor: pointer;
-        }
-
-        /* Navigation */
-        .nav {
-            display: flex;
-            overflow-x: auto;
-            gap: 10px;
-            padding: 15px 20px;
-            background: #151922;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .nav::-webkit-scrollbar {
-            display: none;
-        }
-
-        .nav-btn {
-            background: transparent;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            white-space: nowrap;
-            font-size: 14px;
-            transition: all 0.3s;
-        }
-
-        .nav-btn.active {
-            background: #3B82F6;
-        }
-
-        .nav-btn:active {
-            transform: scale(0.95);
-        }
-
-        /* Content */
-        .content {
-            padding: 20px;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-
-        .card {
-            background: #1E2430;
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-        .card h2 {
-            font-size: 20px;
-            margin-bottom: 15px;
-            color: white;
-        }
-
-        .card-divider {
-            height: 1px;
-            background: #374151;
-            margin: 15px 0;
-        }
-
-        /* Messages */
-        .messages {
-            max-height: 400px;
-            overflow-y: auto;
-            margin-bottom: 15px;
-        }
-
-        .message {
-            background: #1A1F2E;
-            border-radius: 10px;
-            padding: 12px;
-            margin-bottom: 10px;
-        }
-
-        .message-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-        }
-
-        .message-username {
-            color: #3B82F6;
-            font-weight: bold;
-            font-size: 13px;
-        }
-
-        .message-time {
-            color: #6B7280;
-            font-size: 11px;
-        }
-
-        .message-content {
-            color: #E5E7EB;
-            font-size: 14px;
-            word-wrap: break-word;
-        }
-
-        /* Input Area */
-        .input-area {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
-
-        .input-area input {
-            flex: 1;
-            background: #151922;
-            border: 1px solid #374151;
-            color: white;
-            padding: 12px 15px;
-            border-radius: 8px;
-            font-size: 14px;
-        }
-
-        .btn {
-            background: #3B82F6;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 14px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.3s;
-        }
-
-        .btn:active {
-            transform: scale(0.95);
-            background: #2563EB;
-        }
-
-        .btn-secondary {
-            background: #374151;
-        }
-
-        .btn-secondary:active {
-            background: #4B5563;
-        }
-
-        /* Status */
-        .status {
-            display: inline-block;
-            padding: 8px 15px;
-            border-radius: 8px;
-            font-size: 13px;
-            margin-bottom: 15px;
-        }
-
-        .status.connected {
-            background: rgba(16, 185, 129, 0.1);
-            color: #10B981;
-        }
-
-        .status.disconnected {
-            background: rgba(239, 68, 68, 0.1);
-            color: #EF4444;
-        }
-
-        /* Credits & Commands */
-        .text-content {
-            color: #E5E7EB;
-            line-height: 1.6;
-            font-size: 14px;
-            white-space: pre-wrap;
-        }
-
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: #9CA3AF;
-        }
-
-        /* Roblox Tools */
-        .tool-grid {
-            display: grid;
-            gap: 10px;
-        }
-
-        .tool-btn {
-            background: #3B82F6;
-            color: white;
-            border: none;
-            padding: 15px;
-            border-radius: 10px;
-            font-size: 15px;
-            cursor: pointer;
-            text-align: center;
-            transition: all 0.3s;
-        }
-
-        .tool-btn:active {
-            transform: scale(0.98);
-            background: #2563EB;
-        }
-
-        /* Modal */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.8);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .modal.show {
-            display: flex;
-        }
-
-        .modal-content {
-            background: #1E2430;
-            border-radius: 15px;
-            padding: 25px;
-            max-width: 400px;
-            width: 100%;
-        }
-
-        .modal-content h3 {
-            margin-bottom: 15px;
-            color: white;
-        }
-
-        .modal-content input {
-            width: 100%;
-            background: #151922;
-            border: 1px solid #374151;
-            color: white;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            font-size: 14px;
-        }
-
-        .modal-buttons {
-            display: flex;
-            gap: 10px;
-        }
-
-        .modal-buttons button {
-            flex: 1;
-        }
-
-        /* Loading */
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #9CA3AF;
-        }
-
-        @media (max-width: 600px) {
-            .content {
-                padding: 15px;
-            }
-            
-            .card {
-                padding: 15px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <!-- Language Selector -->
-    <div class="lang-selector">
-        <select id="langSelect" onchange="changeLanguage(this.value)">
-            <option value="fr">🇫🇷 Français</option>
-            <option value="en">🇬🇧 English</option>
-            <option value="de">🇩🇪 Deutsch</option>
-        </select>
-    </div>
-
-    <!-- Header -->
-    <div class="header">
-        <h1 id="headerTitle">The Strange Wood</h1>
-        <p id="headerSubtitle">Documentation</p>
-    </div>
-
-    <!-- Navigation -->
-    <div class="nav">
-        <button class="nav-btn active" onclick="showPage('monsters')" data-i18n="monster_list">Liste des monstres</button>
-        <button class="nav-btn" onclick="showPage('messaging')" data-i18n="messaging">💬 Messagerie</button>
-        <button class="nav-btn" onclick="showPage('credits')" data-i18n="credits">Crédits</button>
-        <button class="nav-btn" onclick="showPage('commands')" data-i18n="admin_commands">Commandes admin</button>
-        <button class="nav-btn" onclick="showPage('roblox')" data-i18n="roblox_tools">Outils Roblox</button>
-    </div>
-
-    <!-- Content -->
-    <div class="content" id="content">
-        <!-- Content dynamically loaded here -->
-    </div>
-
-    <!-- Username Modal -->
-    <div class="modal" id="usernameModal">
-        <div class="modal-content">
-            <h3 data-i18n="enter_username">Entrez votre nom d'utilisateur:</h3>
-            <input type="text" id="usernameInput" placeholder="Nom d'utilisateur">
-            <div class="modal-buttons">
-                <button class="btn" onclick="confirmUsername()" data-i18n="confirm_button">Confirmer</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Server Config Modal -->
-    <div class="modal" id="serverModal">
-        <div class="modal-content">
-            <h3 data-i18n="server_config_title">Configuration du serveur</h3>
-            <input type="text" id="serverIP" placeholder="IP du serveur" value="127.0.0.1">
-            <input type="number" id="serverPort" placeholder="Port" value="5555">
-            <div class="modal-buttons">
-                <button class="btn btn-secondary" onclick="closeServerModal()">Annuler</button>
-                <button class="btn" onclick="connectToServer()" data-i18n="connect_button">Se connecter</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // Translations
-        const translations = {
-            fr: {
-                monster_list: "Liste des monstres",
-                messaging: "💬 Messagerie",
-                credits: "Crédits",
-                admin_commands: "Commandes admin",
-                roblox_tools: "Outils Roblox",
-                status_connected: "🟢 Connecté au serveur",
-                status_disconnected: "🔴 Non connecté",
-                connect_server: "Se connecter au serveur",
-                connect_info: "Connectez-vous au serveur pour utiliser la messagerie.",
-                message_placeholder: "Tapez votre message...",
-                send_button: "Envoyer",
-                no_messages: "Aucun message pour le moment.\nSoyez le premier à écrire !",
-                enter_username: "Entrez votre nom d'utilisateur:",
-                confirm_button: "Confirmer",
-                server_config_title: "Configuration du serveur",
-                connect_button: "Se connecter",
-                launch_roblox: "Lancer Roblox",
-                launch_studio: "Lancer Roblox Studio",
-                open_game: "Ouvrir le jeu",
-                open_group: "Ouvrir le groupe",
-                incoming: "En développement",
-                credits_text: "Game Designer:\nMehdii_az02 @Realyst\n\nGame Idea:\nMcflive2 @mcflive2\n\nFirst Animator:\nDeldo38 @deldo38\n\nSecond Animator:\nMehdii_az02 @Realyst\n\nScripter:\nMehdii_az02 @Realyst\n\nGUI Designer:\nMehdii_az02 @Realyst\n\nAdministrators:\nChestlomlom @chestlomlom\nMcflive2 @mcflive2\n\nGame Testers:\nLya_babyyyyy @Sammy\nNonoaki1 @nonoaki1\nDemon97203 @demon97203",
-                commands_text: "Commandes d'événements:\n\ngalaxyevent true/false\ntornadoevent true/false\n\nCommandes utilitaires:\n\nadjustDays [playerName] [quantité]\nannouncement [message]\n\nCommandes de modération:\n\nban [playerName] [durée] [raison]\nkick [playerName] [raison]\nunban [userId]\n\nCommande de déplacement:\n\nfly [playerName]"
-            },
-            en: {
-                monster_list: "Monster List",
-                messaging: "💬 Messaging",
-                credits: "Credits",
-                admin_commands: "Admin Commands",
-                roblox_tools: "Roblox Tools",
-                status_connected: "🟢 Connected to server",
-                status_disconnected: "🔴 Not connected",
-                connect_server: "Connect to server",
-                connect_info: "Connect to the server to use messaging.",
-                message_placeholder: "Type your message...",
-                send_button: "Send",
-                no_messages: "No messages yet.\nBe the first to write!",
-                enter_username: "Enter your username:",
-                confirm_button: "Confirm",
-                server_config_title: "Server configuration",
-                connect_button: "Connect",
-                launch_roblox: "Launch Roblox",
-                launch_studio: "Launch Roblox Studio",
-                open_game: "Open game",
-                open_group: "Open group",
-                incoming: "Coming soon",
-                credits_text: "Game Designer:\nMehdii_az02 @Realyst\n\nGame Idea:\nMcflive2 @mcflive2\n\nFirst Animator:\nDeldo38 @deldo38\n\nSecond Animator:\nMehdii_az02 @Realyst\n\nScripter:\nMehdii_az02 @Realyst\n\nGUI Designer:\nMehdii_az02 @Realyst\n\nAdministrators:\nChestlomlom @chestlomlom\nMcflive2 @mcflive2\n\nGame Testers:\nLya_babyyyyy @Sammy\nNonoaki1 @nonoaki1\nDemon97203 @demon97203",
-                commands_text: "Event commands:\n\ngalaxyevent true/false\ntornadoevent true/false\n\nUtility commands:\n\nadjustDays [playerName] [amount]\nannouncement [message]\n\nModeration commands:\n\nban [playerName] [duration] [reason]\nkick [playerName] [reason]\nunban [userId]\n\nMovement command:\n\nfly [playerName]"
-            },
-            de: {
-                monster_list: "Monsterliste",
-                messaging: "💬 Nachrichten",
-                credits: "Credits",
-                admin_commands: "Admin-Befehle",
-                roblox_tools: "Roblox-Tools",
-                status_connected: "🟢 Mit Server verbunden",
-                status_disconnected: "🔴 Nicht verbunden",
-                connect_server: "Mit Server verbinden",
-                connect_info: "Verbinden Sie sich mit dem Server, um Nachrichten zu nutzen.",
-                message_placeholder: "Geben Sie Ihre Nachricht ein...",
-                send_button: "Senden",
-                no_messages: "Noch keine Nachrichten.\nSeien Sie der Erste!",
-                enter_username: "Geben Sie Ihren Benutzernamen ein:",
-                confirm_button: "Bestätigen",
-                server_config_title: "Server-Konfiguration",
-                connect_button: "Verbinden",
-                launch_roblox: "Roblox starten",
-                launch_studio: "Roblox Studio starten",
-                open_game: "Spiel öffnen",
-                open_group: "Gruppe öffnen",
-                incoming: "In Entwicklung",
-                credits_text: "Game Designer:\nMehdii_az02 @Realyst\n\nSpielidee:\nMcflive2 @mcflive2\n\nErster Animator:\nDeldo38 @deldo38\n\nZweiter Animator:\nMehdii_az02 @Realyst\n\nScripter:\nMehdii_az02 @Realyst\n\nGUI Designer:\nMehdii_az02 @Realyst\n\nAdministratoren:\nChestlomlom @chestlomlom\nMcflive2 @mcflive2\n\nSpieltester:\nLya_babyyyyy @Sammy\nNonoaki1 @nonoaki1\nDemon97203 @demon97203",
-                commands_text: "Event-Befehle:\n\ngalaxyevent true/false\ntornadoevent true/false\n\nUtility-Befehle:\n\nadjustDays [playerName] [Menge]\nannouncement [Nachricht]\n\nModerationsbefehle:\n\nban [playerName] [Dauer] [Grund]\nkick [playerName] [Grund]\nunban [userId]\n\nBewegungsbefehl:\n\nfly [playerName]"
-            }
+function sendMessage() {
+    if (!username) {
+        showUsernameModal();
+        return;
+    }
+    const input = document.getElementById("messageInput");
+    const content = input.value.trim();
+    if (content && ws && ws.readyState === WebSocket.OPEN) {
+        const msg = {
+            username: username,
+            content: content,
+            timestamp: new Date().toISOString().replace("T", " ").split(".")[0]
         };
+        ws.send(JSON.stringify(msg));
+        input.value = "";
+        displayMessage(msg);
+    }
+}
 
-        let currentLang = 'fr';
-        let currentPage = 'monsters';
-        let username = null;
-        let ws = null;
-        let messages = [];
+function displayMessage(msg) {
+    const container = document.getElementById("messages");
+    if (!container) return;
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            showPage('monsters');
-        });
+    const div = document.createElement("div");
+    div.className = "message";
 
-        // Change language
-        function changeLanguage(lang) {
-            currentLang = lang;
-            document.querySelectorAll('[data-i18n]').forEach(el => {
-                const key = el.getAttribute('data-i18n');
-                if (translations[lang][key]) {
-                    el.textContent = translations[lang][key];
-                }
-            });
-            showPage(currentPage);
-        }
+    const header = document.createElement("div");
+    header.className = "message-header";
 
-        function t(key) {
-            return translations[currentLang][key] || key;
-        }
+    const user = document.createElement("span");
+    user.className = "message-username";
+    user.textContent = msg.username;
 
-        // Show page
-        function showPage(page) {
-            currentPage = page;
-            
-            // Update nav
-            document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event?.target?.classList.add('active');
+    const time = document.createElement("span");
+    time.className = "message-time";
+    time.textContent = msg.timestamp;
 
-            const content = document.getElementById('content');
-            
-            switch(page) {
-                case 'monsters':
-                    content.innerHTML = `
-                        <div class="card">
-                            <h2>${t('monster_list')}</h2>
-                            <div class="card-divider"></div>
-                            <div class="empty-state">${t('incoming')}</div>
-                        </div>
-                    `;
-                    break;
-                    
-                case 'messaging':
-                    showMessaging();
-                    break;
-                    
-                case 'credits':
-                    content.innerHTML = `
-                        <div class="card">
-                            <h2>${t('credits')}</h2>
-                            <div class="card-divider"></div>
-                            <div class="text-content">${t('credits_text')}</div>
-                        </div>
-                    `;
-                    break;
-                    
-                case 'commands':
-                    content.innerHTML = `
-                        <div class="card">
-                            <h2>${t('admin_commands')}</h2>
-                            <div class="card-divider"></div>
-                            <div class="text-content">${t('commands_text')}</div>
-                        </div>
-                    `;
-                    break;
-                    
-                case 'roblox':
-                    content.innerHTML = `
-                        <div class="card">
-                            <h2>${t('roblox_tools')}</h2>
-                            <div class="card-divider"></div>
-                            <div class="tool-grid">
-                                <button class="tool-btn" onclick="openLink('https://www.roblox.com')">${t('launch_roblox')}</button>
-                                <button class="tool-btn" onclick="openLink('https://www.roblox.com/create')">${t('launch_studio')}</button>
-                                <button class="tool-btn" onclick="openLink('https://www.roblox.com/fr/games/72493739608399/The-Strange-Wood')">${t('open_game')}</button>
-                                <button class="tool-btn" onclick="openLink('https://www.roblox.com/fr/communities/863021782/The-Strange-Devs#!/about')">${t('open_group')}</button>
-                            </div>
-                        </div>
-                    `;
-                    break;
-            }
-        }
+    header.appendChild(user);
+    header.appendChild(time);
 
-        // Messaging
-        function showMessaging() {
-            const connected = ws && ws.readyState === WebSocket.OPEN;
-            const statusClass = connected ? 'connected' : 'disconnected';
-            const statusText = connected ? t('status_connected') : t('status_disconnected');
-            
-            let html = `
-                <div class="card">
-                    <h2>${t('messaging')}</h2>
-                    <div class="card-divider"></div>
-                    <div class="status ${statusClass}">${statusText}</div>
-            `;
-            
-            if (connected) {
-                html += `
-                    <div class="messages" id="messagesList">
-                        ${messages.length ? messages.map(msg => `
-                            <div class="message">
-                                <div class="message-header">
-                                    <span class="message-username">${msg.username}</span>
-                                    <span class="message-time">${msg.timestamp}</span>
-                                </div>
-                                <div class="message-content">${msg.content}</div>
-                            </div>
-                        `).join('') : `<div class="empty-state">${t('no_messages')}</div>`}
-                    </div>
-                    <div class="input-area">
-                        <input type="text" id="messageInput" placeholder="${t('message_placeholder')}" onkeypress="if(event.key==='Enter')sendMessage()">
-                        <button class="btn" onclick="sendMessage()">${t('send_button')}</button>
-                    </div>
-                `;
-            } else {
-                html += `
-                    <div class="empty-state">${t('connect_info')}</div>
-                    <button class="btn" onclick="openServerModal()">${t('connect_server')}</button>
-                `;
-            }
-            
-            html += `</div>`;
-            document.getElementById('content').innerHTML = html;
-            
-            if (connected) {
-                scrollToBottom();
-            }
-        }
+    const content = document.createElement("div");
+    content.className = "message-content";
+    content.textContent = msg.content;
 
-        function scrollToBottom() {
-            const list = document.getElementById('messagesList');
-            if (list) {
-                list.scrollTop = list.scrollHeight;
-            }
-        }
-
-        // Server connection
-        function openServerModal() {
-            document.getElementById('serverModal').classList.add('show');
-        }
-
-        function closeServerModal() {
-            document.getElementById('serverModal').classList.remove('show');
-        }
-
-        function connectToServer() {
-            const ip = document.getElementById('serverIP').value;
-            const port = document.getElementById('serverPort').value;
-            
-            ws = new WebSocket(`ws://${ip}:${port}`);
-            
-            ws.onopen = () => {
-                closeServerModal();
-                showMessaging();
-            };
-            
-            ws.onmessage = (event) => {
-                const msg = JSON.parse(event.data);
-                messages.push(msg);
-                if (currentPage === 'messaging') {
-                    showMessaging();
-                }
-            };
-            
-            ws.onerror = () => {
-                alert('Erreur de connexion au serveur');
-                closeServerModal();
-            };
-        }
-
-        // Send message
-        function sendMessage() {
-            if (!username) {
-                document.getElementById('usernameModal').classList.add('show');
-                return;
-            }
-            
-            const input = document.getElementById('messageInput');
-            const content = input.value.trim();
-            
-            if (content && ws && ws.readyState === WebSocket.OPEN) {
-                const msg = {
-                    username: username,
-                    content: content,
-                    timestamp: new Date().toLocaleString()
-                };
-                
-                ws.send(JSON.stringify(msg));
-                messages.push(msg);
-                input.value = '';
-                showMessaging();
-            }
-        }
-
-        // Username
-        function confirmUsername() {
-            const input = document.getElementById('usernameInput');
-            if (input.value.trim()) {
-                username = input.value.trim();
-                document.getElementById('usernameModal').classList.remove('show');
-                sendMessage();
-            }
-        }
-
-        // Open links
-        function openLink(url) {
-            window.open(url, '_blank');
-        }
-    </script>
-</body>
-</html>
+    div.appendChild(header);
+    div.appendChild(content);
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+</script>
